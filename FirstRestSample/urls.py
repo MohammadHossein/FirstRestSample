@@ -13,20 +13,28 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf.urls import url
 from django.contrib import admin
 from django.urls import path
 from rest_framework.urlpatterns import format_suffix_patterns
 from blog import views
-from rest_framework.authtoken import views as mamad
+from rest_framework.authtoken import views as restView
+
+from blog.views import PostView, CommentView
+
+# test()
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('login/', views.UserList.as_view()),
-    path('login_user/', views.login_user),
+    path('users/', views.UserList.as_view()),
+    path('login/', views.login_user),
     path('signup/', views.signup),
     path('delete/<str:username>/', views.user_detail),
     path('token/', views.token),
-    path('gettoken/', mamad.obtain_auth_token),
+    path('gettoken/', restView.obtain_auth_token),
+    url(r'^post/', PostView.as_view()),
+    url(r'^comment/',CommentView.as_view()),
+
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

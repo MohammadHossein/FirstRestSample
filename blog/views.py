@@ -1,21 +1,81 @@
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from .models import myUser
+
+from blog.models import Post, Comment
+from blog.serializers import PostSerializer, CommentSerializer
+from .models import MyUser
 from .serializers import UserSerializer
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth import authenticate, login
 from django.http import HttpResponse
 
 
-
 class UserList(APIView):
     def get(self, request):
-        users = myUser.objects.all()
+        users = MyUser.objects.all()
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
+
+
+class PostView(APIView):
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+
+    def get(self, request):
+        posts = Post.objects.all()
+        serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if str(request.user) != request.data['username']:
+            return Response('Can\'t post with other users!', status=status.HTTP_403_FORBIDDEN)
+        p = Post()
+        p.text = request.data['text']
+        p.user = MyUser.objects.get(username=request.data['username'])
+        p.save()
+        return Response('New post added!', status=status.HTTP_200_OK)
+
+    def put(self, requset):
+        p = Post.objects.get(postId=requset.data['id'])
+        p.text = requset.data['text']
+        p.save()
+        return Response('Post changed!', status=status.HTTP_200_OK)
+
+    def delete(self, requset):
+        p = Post.objects.get(postId=requset.data['id'])
+        p.delete()
+        return Response('Post deleted!', status.HTTP_200_OK)
+
+
+class CommentView(APIView):
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+
+    def get(self, requset):
+        comments = Comment.objects.all()
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        c = Comment()
+        c.text = request.data['text']
+        c.user = MyUser.objects.get(username=request.data['username'])
+        c.post = Post.objects.get(postId=request.data['id'])
+        c.save()
+        return Response('New comment added!', status=status.HTTP_200_OK)
+
+    def put(self, requset):
+        c = Comment.objects.get(commentId=requset.data['id'])
+        c.text = requset.data['text']
+        c.save()
+        return Response('Comment Changed!', status=status.HTTP_200_OK)
+
+    def delete(self, requset):
+        c = Comment.objects.get(commentId=requset.data['id'])
+        c.delete()
+        return Response('Comment deleted!', status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 def token(request):
@@ -23,7 +83,7 @@ def token(request):
     password = request.data['password']
     print(username)
     print(password)
-    print(myUser.objects.all()[0])
+    print(MyUser.objects.all()[0])
     user = authenticate(username=username, password=password)
     if user:
         # login(request, user)
@@ -39,7 +99,7 @@ def login_user(request):
     password = request.data['password']
     print(username)
     print(password)
-    print(myUser.objects.all()[0])
+    print(MyUser.objects.all()[0])
     user = authenticate(username=username, password=password)
     if user:
         login(request, user)
@@ -51,7 +111,7 @@ def login_user(request):
 @api_view(['POST'])
 def signup(request):
     try:
-        user = myUser()
+        user = MyUser()
         user.username = request.data['username']
         user.set_password(request.data['password'])
         print(user.username)
@@ -66,8 +126,8 @@ def signup(request):
 @permission_classes((IsAuthenticated,))
 def user_detail(request, username):
     try:
-        user = myUser.objects.get(username=username)
-    except myUser.DoesNotExist:
+        user = MyUser.objects.get(username=username)
+    except MyUser.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
